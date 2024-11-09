@@ -1,0 +1,141 @@
+---
+- name: Configure EC2 instance and deploy Docker application
+  hosts: webservers
+  become: yes
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Update all packages
+      yum:
+        name: '*'
+        state: latest
+        update_only: yes
+
+    - name: Install required packages
+      yum:
+        name:
+          - docker
+          - python3-pip
+        state: present
+
+    - name: Start Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install virtualenv
+      pip:
+        name: virtualenv
+        executable: pip3
+
+    - name: Create a virtual environment for Docker SDK
+      command: python3 -m venv /home/ec2-user/docker_sdk_env
+      args:
+        creates: /home/ec2-user/docker_sdk_env
+
+    - name: Install Docker SDK in virtual environment
+      pip:
+        name: docker
+        virtualenv: /home/ec2-user/docker_sdk_env
+      become: yes
+      become_user: ec2-user
+
+    - name: Create activation script for Docker SDK environment
+      copy:
+        dest: /home/ec2-user/activate_docker_sdk.sh
+        content: |
+          #!/bin/bash
+          source /home/ec2-user/docker_sdk_env/bin/activate
+        mode: '0755'
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Ensure ec2-user has permissions for Docker
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+    - name: Ensure .docker directory exists with correct permissions
+      file:
+        path: /home/ec2-user/.docker
+        state: directory
+        mode: '0700'
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Check for existing Docker config
+      stat:
+        path: /home/ec2-user/.docker/config.json
+      register: docker_config
+
+    - name: Remove existing Docker config if it exists
+      file:
+        path: /home/ec2-user/.docker/config.json
+        state: absent
+      when: docker_config.stat.exists
+
+    - name: Restart Docker daemon
+      systemd:
+        name: docker
+        state: restarted
+
+    - name: Wait for Docker daemon to be ready
+      wait_for:
+        timeout: 10
+
+    # - name: Activate virtual environment and attempt to log into DockerHub
+    #   shell: |
+    #     source /home/ec2-user/docker_sdk_env/bin/activate
+    #     python -c "import docker; client = docker.from_env(); client.login(username='{{ dockerhub_username }}', password='{{ dockerhub_password }}')"
+    #   become: yes
+    #   become_user: ec2-user
+    #   no_log: true
+    #   register: docker_login_result
+    #   ignore_errors: yes
+
+    - name: Login to Docker Hub using shell command (fallback)
+      shell: "docker login -u {{ dockerhub_username }} -p {{ dockerhub_password }}"
+      register: docker_login_shell
+      ignore_errors: yes
+
+    - name: Pull the Docker image
+      docker_image:
+        name: "nginx"
+        source: pull
+        force_source: yes
+
+    - name: Run the Docker container
+      docker_container:
+        name: nginx
+        image: "nginx"
+        state: started
+        recreate: yes
+        published_ports:
+          - "80:80"
+
+
+    - name: Check if container is running
+      docker_container_info:
+        name: nginx
+      register: container_info
+      ignore_errors: yes
+
+
+    - name: Display container status
+      debug:
+        msg: "Container status: {{ container_info.container['State']['Status'] }}"
+
+    - name: Verify application accessibility
+      uri:
+        url: "http://localhost"
+        return_content: yes
+      register: app_response
+      ignore_errors: yes
+
+    # - name: Display application response
+    #   debug:
+    #     var: app_response.content
+    #   when: app_response is succeeded
