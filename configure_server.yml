@@ -24,7 +24,7 @@
         enabled: yes
         
     - name: Update apt and install docker-ce
-      apt:
+      dnf:
         name: docker-ce
         state: latest
         update_cache: true
