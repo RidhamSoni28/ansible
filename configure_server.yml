@@ -28,6 +28,22 @@
         name: ec2-user
         groups: docker
         append: yes
+        
+    - name: Create a directory for custom nginx content
+      file:
+        path: /home/ec2-user/nginx-content
+        state: directory
+        mode: '0755'
+      become: yes
+      become_user: ec2-user
+      
+    - name: Copy custom index.html
+      copy:
+        src: index.html
+        dest: /home/ec2-user/nginx-content/index.html
+      become: yes
+      become_user: ec2-user
+
 
     - name: Pull the Docker image
       docker_image:
@@ -41,6 +57,8 @@
         image: "nginx"
         state: started
         recreate: yes
+        volumes:
+          - "/home/ec2-user/nginx-content:/usr/share/nginx/html"
         published_ports:
           - "80:80"
 
