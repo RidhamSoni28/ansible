@@ -4,7 +4,7 @@ env:
   variables:
     ANSIBLE_HOST_KEY_CHECKING: "False"
   parameter-store:
-    SSH_KEY: "/myapp/ssh-key"
+    SSH_KEY: "/ec2/keypair/key-0e1ba6026887a9d73"
 
 phases:
   install:
