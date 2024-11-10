@@ -22,26 +22,6 @@
         name: docker
         state: started
         enabled: yes
-        
-    - name: Update apt and install docker-ce
-      dnf:
-        name: docker-ce
-        state: latest
-        update_cache: true
-
-    # - name: Changing Docker daemon configuration file network
-    #   copy:
-    #     content: |
-    #       {
-    #         "bip": "172.168.10.1/30"
-    #       }
-    #     dest: /etc/docker/daemon.json
-    #   notify: restart docker
-
-    - name: Start Docker service
-      service:
-        name: docker
-        state: started
 
     - name: Ensure ec2-user has permissions for Docker
       user:
