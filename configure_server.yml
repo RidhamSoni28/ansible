@@ -34,11 +34,23 @@
       command: python3 -m venv /home/ec2-user/docker_sdk_env
       args:
         creates: /home/ec2-user/docker_sdk_env
+      become: yes
+      become_user: ec2-user
+
+    - name: Upgrade pip in virtual environment
+      pip:
+        name: pip
+        state: latest
+        virtualenv: /home/ec2-user/docker_sdk_env
+        virtualenv_command: python3 -m venv
+      become: yes
+      become_user: ec2-user
 
     - name: Install Docker SDK in virtual environment
       pip:
         name: docker
         virtualenv: /home/ec2-user/docker_sdk_env
+        virtualenv_command: python3 -m venv
       become: yes
       become_user: ec2-user
 
