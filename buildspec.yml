@@ -4,12 +4,12 @@ env:
   variables:
     ANSIBLE_HOST_KEY_CHECKING: "False"
   parameter-store:
-    SSH_KEY: "/ec2/keypair/key-0e1ba6026887a9d73"
+    SSH_KEY: "/myapp/ssh-key"
 
 phases:
   install:
     runtime-versions:
-      python: 3.8
+      python: 3.13
     commands:
       - pip install ansible
 
@@ -21,11 +21,16 @@ phases:
       - chmod 600 ~/.ssh/id_rsa
       - eval "$(ssh-agent -s)"
       - ssh-add ~/.ssh/id_rsa
+      - echo "Inventory file contents:"
+      - cat inventory.ini
+      - echo "Ansible version:"
+      - ansible --version
 
   build:
     commands:
       - echo "Running Ansible playbook..."
-      - ansible-playbook -i inventory.ini configure_server.yml
+      - ansible-playbook -i inventory.ini configure_server.yml -vvv
+      - echo "Playbook execution completed"
 
   post_build:
     commands:
@@ -35,4 +40,3 @@ phases:
 artifacts:
   files:
     - '**/*'
-
